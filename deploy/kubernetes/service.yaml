@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: daylight-api
+  namespace: daylight
+spec:
+  selector: {app: daylight-api}
+  ports: [{name: http, port: 80, targetPort: http}]
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: daylight-api
+  namespace: daylight
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: {app: daylight-api}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: daylight-worker
+  namespace: daylight
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: {app: daylight-worker}

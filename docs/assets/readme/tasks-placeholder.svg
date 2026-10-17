@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="640" viewBox="0 0 1200 640" role="img" aria-labelledby="title desc">
+<title id="title">待办 / Tasks — screenshot placeholder</title><desc id="desc">This is a media placeholder, not a product screenshot.</desc>
+<rect width="1200" height="640" rx="22" fill="#F0F4F8"/>
+<rect x="32" y="32" width="1136" height="576" rx="16" fill="#FAF9F5" stroke="#CBD6E3" stroke-width="2" stroke-dasharray="10 8"/>
+<rect x="78" y="91" width="68" height="7" rx="3" fill="#F4B544"/>
+<text x="78" y="154" fill="#617186" font-family="Arial,sans-serif" font-size="23" letter-spacing="4">DAYLIGHT / SCREENSHOT SLOT</text>
+<text x="78" y="253" fill="#142D4E" font-family="Arial, sans-serif" font-size="44" font-weight="700">待办 / Tasks</text>
+<text x="78" y="313" fill="#617186" font-family="Arial,sans-serif" font-size="25">Deadlines · Verification · Dependencies</text>
+<text x="78" y="496" fill="#617186" font-family="Arial,sans-serif" font-size="24">待补实机截图 · Replace with a verified, sanitized capture</text>
+<text x="78" y="539" fill="#617186" font-family="Arial,sans-serif" font-size="21">Placeholder only — not a screenshot or execution result</text>
+</svg>

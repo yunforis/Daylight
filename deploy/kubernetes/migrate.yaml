@@ -1,0 +1,39 @@
+# Run and wait for completion BEFORE rolling out application Deployments.
+# Delete only this completed Job before rerunning for a subsequent image release.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: daylight-migrate
+  namespace: daylight
+spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: 600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: daylight
+        app.kubernetes.io/component: migration
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: migrate
+          image: daylight:local
+          imagePullPolicy: IfNotPresent
+          command: [node, scripts/migrate.js]
+          envFrom:
+            - configMapRef: {name: daylight-config}
+            - secretRef: {name: daylight-secrets}
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: '1', memory: 512Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}

@@ -1,0 +1,33 @@
+# Optional: install KEDA CRDs first. Do not combine with another worker HPA.
+# Rabbit messages are wakeups, not authoritative job counts. Keep >=1 worker:
+# PostgreSQL due/recovery polling must continue even when the wakeup queue is empty.
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: daylight-rabbitmq
+  namespace: daylight
+spec:
+  secretTargetRef:
+    - parameter: host
+      name: daylight-secrets
+      key: DAYLIGHT_AMQP_URL
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: daylight-worker
+  namespace: daylight
+spec:
+  scaleTargetRef: {name: daylight-worker}
+  pollingInterval: 15
+  cooldownPeriod: 120
+  minReplicaCount: 1
+  maxReplicaCount: 10
+  triggers:
+    - type: rabbitmq
+      metadata:
+        protocol: amqp
+        queueName: daylight.jobs.v1
+        mode: QueueLength
+        value: '10'
+      authenticationRef: {name: daylight-rabbitmq}

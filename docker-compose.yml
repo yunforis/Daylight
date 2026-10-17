@@ -1,0 +1,190 @@
+# Use an explicit project name for isolated environments: docker compose -p daylight-test ...
+x-app-environment: &app-environment
+  NODE_ENV: production
+  DAYLIGHT_RUNTIME: production
+  HOST: 0.0.0.0
+  PORT: '3000'
+  DAYLIGHT_HEALTH_PORT: '3001'
+  DAYLIGHT_DATABASE_URL: postgresql://daylight:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/daylight
+  DAYLIGHT_REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD}@redis:6379/0
+  DAYLIGHT_AMQP_URL: amqp://daylight:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}@rabbitmq:5672/%2F
+  DAYLIGHT_JWT_SECRET: ${DAYLIGHT_JWT_SECRET:?Set DAYLIGHT_JWT_SECRET (at least 32 characters)}
+  DAYLIGHT_OSS_PROVIDER: s3
+  DAYLIGHT_OSS_ENDPOINT: http://minio:9000
+  DAYLIGHT_OSS_BUCKET: ${DAYLIGHT_OSS_BUCKET:-daylight}
+  DAYLIGHT_OSS_REGION: us-east-1
+  DAYLIGHT_OSS_FORCE_PATH_STYLE: '1'
+  DAYLIGHT_OSS_ACCESS_KEY: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER}
+  DAYLIGHT_OSS_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD}
+  DAYLIGHT_ADMIN_EMAILS: ${DAYLIGHT_ADMIN_EMAILS:-}
+  DAYLIGHT_PUBLIC_BASE_URL: ${DAYLIGHT_PUBLIC_BASE_URL:-http://localhost:3000}
+  DAYLIGHT_SYSTEM_MAIL_ENABLED: ${DAYLIGHT_SYSTEM_MAIL_ENABLED:-0}
+  DAYLIGHT_SYSTEM_MAIL_HOST: ${DAYLIGHT_SYSTEM_MAIL_HOST:-}
+  DAYLIGHT_SYSTEM_MAIL_PORT: ${DAYLIGHT_SYSTEM_MAIL_PORT:-465}
+  DAYLIGHT_SYSTEM_MAIL_SECURE: ${DAYLIGHT_SYSTEM_MAIL_SECURE:-1}
+  DAYLIGHT_SYSTEM_MAIL_USER: ${DAYLIGHT_SYSTEM_MAIL_USER:-}
+  DAYLIGHT_SYSTEM_MAIL_PASS: ${DAYLIGHT_SYSTEM_MAIL_PASS:-}
+  DAYLIGHT_SYSTEM_MAIL_FROM: ${DAYLIGHT_SYSTEM_MAIL_FROM:-}
+  # Observability + provenance. The sink is a named volume so metrics survive restarts and
+  # are readable from the host; every role writes its own metrics-<host>-<pid>.jsonl.
+  DAYLIGHT_METRICS: ${DAYLIGHT_METRICS:-0}
+  DAYLIGHT_METRICS_DIR: /var/lib/daylight-metrics
+  # A mailbox sync walks every message through the model in one job; on a slow reasoning
+  # model a full mailbox outlives the 300s in-code guard. The lease is heartbeat-renewed,
+  # so a longer budget is safe and avoids burning model calls on avoidable retries.
+  DAYLIGHT_JOB_TIMEOUT_MS: ${DAYLIGHT_JOB_TIMEOUT_MS:-900000}
+  DAYLIGHT_RUN_ID: ${DAYLIGHT_RUN_ID:-}
+  DAYLIGHT_GIT_SHA: ${DAYLIGHT_GIT_SHA:-}
+  DAYLIGHT_GIT_DIRTY: ${DAYLIGHT_GIT_DIRTY:-}
+
+x-app: &app
+  image: ${DAYLIGHT_IMAGE:-daylight:local}
+  build:
+    context: .
+    args:
+      DEBIAN_MIRROR: ${DEBIAN_MIRROR:-deb.debian.org}
+  init: true
+  restart: unless-stopped
+  environment: *app-environment
+  read_only: true
+  tmpfs:
+    - /tmp:uid=1000,gid=1000,mode=1777,size=536870912
+  volumes:
+    - metrics-data:/var/lib/daylight-metrics
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  stop_grace_period: 90s
+  depends_on:
+    migrate:
+      condition: service_completed_successfully
+    redis:
+      condition: service_healthy
+    rabbitmq:
+      condition: service_healthy
+    minio-init:
+      condition: service_completed_successfully
+
+services:
+  postgres:
+    image: postgres:17.6-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: daylight
+      POSTGRES_USER: daylight
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    # Loopback-only so host-side tooling (migrations, scripts/verify-*.mjs, metrics collectors)
+    # can reach the dependency on a single node. Never bound to a public interface.
+    ports: ['127.0.0.1:${DAYLIGHT_PG_HOST_PORT:-15432}:5432']
+    volumes: [postgres-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U daylight -d daylight']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    stop_grace_period: 60s
+  redis:
+    image: redis:7.4.5-bookworm
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
+    command: [sh, -ec, 'exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"']
+    ports: ['127.0.0.1:${DAYLIGHT_REDIS_HOST_PORT:-16379}:6379']
+    volumes: [redis-data:/data]
+    healthcheck:
+      test: [CMD-SHELL, 'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping | grep -q PONG']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  rabbitmq:
+    image: rabbitmq:4.1.4-management-alpine
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: daylight
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}
+    ports:
+      - '127.0.0.1:${DAYLIGHT_MQ_HOST_PORT:-15673}:5672'
+      - '127.0.0.1:${DAYLIGHT_MQ_UI_HOST_PORT:-15674}:15672'
+    volumes: [rabbitmq-data:/var/lib/rabbitmq]
+    healthcheck:
+      test: [CMD, rabbitmq-diagnostics, -q, check_running]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+    stop_grace_period: 60s
+  minio:
+    # Pinned to a release whose layers are retrievable through the container-registry mirrors
+    # reachable from mainland-China hosts; the earlier April tag is denied by every mirror.
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    restart: unless-stopped
+    command: [server, /data, --console-address, ':9001']
+    # Loopback-only: host-side verification (scripts/verify-oss.mjs) and the console UI.
+    ports:
+      - '127.0.0.1:${DAYLIGHT_MINIO_HOST_PORT:-19000}:9000'
+      - '127.0.0.1:${DAYLIGHT_MINIO_CONSOLE_HOST_PORT:-19001}:9001'
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD}
+    volumes: [minio-data:/data]
+    healthcheck:
+      test: [CMD, curl, -f, http://localhost:9000/minio/health/live]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  minio-init:
+    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+    restart: 'no'
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD}
+      DAYLIGHT_OSS_BUCKET: ${DAYLIGHT_OSS_BUCKET:-daylight}
+    entrypoint: [/bin/sh, -ec]
+    command:
+      - |
+        mc alias set daylight http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"
+        mc mb --ignore-existing "daylight/$$DAYLIGHT_OSS_BUCKET"
+        mc anonymous set none "daylight/$$DAYLIGHT_OSS_BUCKET"
+  migrate:
+    <<: *app
+    restart: 'no'
+    command: [node, scripts/migrate.js]
+    depends_on:
+      postgres:
+        condition: service_healthy
+  api:
+    <<: *app
+    command: [node, server/index.js, --production]
+    ports: ['${DAYLIGHT_BIND_ADDRESS:-127.0.0.1}:${DAYLIGHT_PORT:-3000}:3000']
+    healthcheck:
+      test: [CMD, node, -e, 'fetch("http://127.0.0.1:3000/health/ready").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))']
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 6
+  worker:
+    <<: *app
+    command: [node, server/worker.js]
+    healthcheck:
+      test: [CMD, node, -e, 'fetch("http://127.0.0.1:3001/health/ready").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))']
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 6
+  scheduler:
+    <<: *app
+    command: [node, server/scheduler.js]
+    healthcheck:
+      test: [CMD, node, -e, 'fetch("http://127.0.0.1:3001/health/ready").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))']
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 6
+
+volumes:
+  postgres-data:
+  redis-data:
+  rabbitmq-data:
+  minio-data:
+  metrics-data:

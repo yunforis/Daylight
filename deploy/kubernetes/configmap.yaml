@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: daylight-config
+  namespace: daylight
+data:
+  NODE_ENV: production
+  DAYLIGHT_RUNTIME: production
+  HOST: 0.0.0.0
+  PORT: '3000'
+  DAYLIGHT_HEALTH_PORT: '3001'
+  DAYLIGHT_DATABASE_SSL: '1'
+  DAYLIGHT_OSS_PROVIDER: s3
+  DAYLIGHT_OSS_ENDPOINT: https://s3.example.com
+  DAYLIGHT_OSS_REGION: us-east-1
+  DAYLIGHT_OSS_BUCKET: daylight
+  DAYLIGHT_OSS_FORCE_PATH_STYLE: '1'
+  DAYLIGHT_PUBLIC_BASE_URL: https://daylight.example.com
+  DAYLIGHT_ADMIN_EMAILS: admin@example.com
+  DAYLIGHT_SYSTEM_MAIL_ENABLED: '0'
+  DAYLIGHT_SYSTEM_MAIL_HOST: smtp.example.com
+  DAYLIGHT_SYSTEM_MAIL_PORT: '465'
+  DAYLIGHT_SYSTEM_MAIL_SECURE: '1'
+  DAYLIGHT_SYSTEM_MAIL_USER: noreply@example.com
+  DAYLIGHT_SYSTEM_MAIL_FROM: Daylight <noreply@example.com>

@@ -1,0 +1,14 @@
+.git
+.DS_Store
+._*
+node_modules
+dist
+data
+work
+output
+docs
+.env
+.env.*
+*.log
+coverage
+deploy

@@ -1,0 +1,21 @@
+[Unit]
+Description=Daylight api
+After=network-online.target postgresql.service redis-server.service rabbitmq-server.service
+Wants=postgresql.service redis-server.service rabbitmq-server.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/daylight/app
+EnvironmentFile=/opt/daylight/.env
+Environment=DAYLIGHT_HEALTH_PORT=3001
+ExecStart=/usr/local/bin/node server/index.js --production
+Restart=always
+RestartSec=3
+KillSignal=SIGTERM
+TimeoutStopSec=60
+LimitNOFILE=65535
+StandardOutput=append:/var/log/daylight/api.log
+StandardError=append:/var/log/daylight/api.log
+
+[Install]
+WantedBy=multi-user.target
