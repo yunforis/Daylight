@@ -10,13 +10,13 @@
     <img src="https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&amp;logo=docker&amp;logoColor=white" alt="Docker Compose" />
     <img src="https://img.shields.io/badge/Agent-Human_in_the_loop-F4B544?style=flat-square" alt="Human-in-the-loop Agent" />
   </p>
-  <p><a href="#overview">项目介绍</a> · <a href="#screenshots">界面展示</a> · <a href="#architecture">系统架构</a> · <a href="#quickstart">快速开始</a> · <a href="#deploy">部署</a> · <a href="#usage">开始使用</a> · <a href="docs/README.md">文档</a> · <a href="#contributing">参与贡献</a></p>
+  <p><a href="#overview">项目介绍</a> · <a href="#demo">功能演示视频</a> · <a href="#screenshots">界面展示</a> · <a href="#architecture">系统架构</a> · <a href="#quickstart">快速开始</a> · <a href="#deploy">部署</a> · <a href="#usage">开始使用</a> · <a href="docs/README.md">文档</a> · <a href="#contributing">参与贡献</a></p>
 </div>
 
 <details>
 <summary><strong>目录</strong></summary>
 
-[项目介绍](#overview) · [快速开始](#quickstart) · [多邮箱](#mailboxes) · [招聘与发票](#workflows) · [页面截图](#screenshots) · [架构](#architecture) · [完整部署](#deploy) · [运维排障](#operations) · [开始使用](#usage) · [模板扩展](#templates) · [开发](#development) · [验证与比赛材料](#evidence) · [路线图](#roadmap) · [参与贡献](#contributing)
+[项目介绍](#overview) · [功能演示视频](#demo) · [快速开始](#quickstart) · [多邮箱](#mailboxes) · [招聘与发票](#workflows) · [页面截图](#screenshots) · [架构](#architecture) · [完整部署](#deploy) · [运维排障](#operations) · [开始使用](#usage) · [模板扩展](#templates) · [开发](#development) · [验证与比赛材料](#evidence) · [路线图](#roadmap) · [参与贡献](#contributing)
 
 </details>
 
@@ -139,6 +139,29 @@ sh deploy/up.sh
 
 <a id="screenshots"></a>
 ## 🖼️ 界面与演示
+
+<a id="demo"></a>
+### 🎬 功能演示视频
+
+[![Daylight 功能演示视频，点击查看](docs/assets/readme/banner.png)](docs/assets/readme/daylight-demo.mp4)
+
+**[▶ 查看 / 下载 Daylight 功能演示视频（MP4，约 156 MB）](docs/assets/readme/daylight-demo.mp4)**
+
+点击上方封面或链接打开视频；若页面未提供在线播放，可下载后观看。
+
+<details>
+<summary>克隆后获取视频原文件</summary>
+
+视频通过 Git LFS 保存。安装 [Git LFS](https://git-lfs.com/) 后，在仓库目录执行：
+
+```bash
+git lfs install
+git lfs pull --include="docs/assets/readme/daylight-demo.mp4"
+```
+
+</details>
+
+### 页面截图
 
 以下为**截图占位**，按核心用户流程预留；替换要求与建议镜头见 [截图拍摄清单](docs/assets/readme/README.md)。架构等说明图已使用项目现有素材，说明图不作为实机截图。
 
@@ -471,7 +494,7 @@ DAYLIGHT_DATA_DIR="$PWD/work/readme-test" npm test
 | 部署与复现 | [部署资产](deploy/README.md) · [依赖配置](DEPLOY.md) · [云端验收记录](docs/submission/deployment/README.md) |
 | 架构与可靠性证据 | [架构](docs/submission/architecture.md) · [故障矩阵](docs/submission/reliability/README.md) |
 | 成本性能与可观测性 | [原始测量](docs/submission/performance/README.md) · [埋点说明](docs/submission/observability/README.md) |
-| PPT、实演与备用视频 | [逐页讲稿与演示脚本](docs/submission/defense.md)；最终文件/视频按发布清单补齐 |
+| PPT、实演与备用视频 | [功能演示视频](docs/assets/readme/daylight-demo.mp4) · [逐页讲稿与演示脚本](docs/submission/defense.md)；PPT 等最终文件按发布清单补齐 |
 | 最终版本与代码快照 | [提交清单](docs/submission/README.md) · [发布冻结](docs/submission/release.md) |
 
 尚需按最终版本补齐 HTTPS、Kubernetes 多副本、跨节点 HA、备份恢复、回滚、长稳与真实用户收益验证。支持某项接口不等于所有供应商实连通过；真实飞书和外部日历验收范围分别记录。
